@@ -2,7 +2,7 @@
 
 A Windows soundboard that mixes your **microphone** with sound clips and sends the result to a **virtual microphone** — so Discord, OBS, and games hear your voice **and** your sound effects.
 
-![Soundboard](src/Soundboard.App/Assets/soundboard-icon.png)
+<img src="src/Soundboard.App/Assets/soundboard-icon.png" alt="Soundboard" width="250"/>
 
 ## Features
 
