@@ -42,7 +42,7 @@ A Windows soundboard that mixes your **microphone** with sound clips and sends t
 **Option A — Run from source (developers)**
 
 ```powershell
-git clone <your-repo-url> soundboard
+git clone https://github.com/JafarBadour/soundboard-add-to-mic.git soundboard
 cd soundboard
 dotnet run --project .\src\Soundboard.App\Soundboard.App.csproj
 ```
