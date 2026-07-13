@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore .\Soundboard.sln
+
+      - name: Test
+        run: dotnet test .\tests\Soundboard.Core.Tests\Soundboard.Core.Tests.csproj --configuration Release --no-restore
+
+      - name: Publish app
+        run: dotnet publish .\src\Soundboard.App\Soundboard.App.csproj -c Release -r win-x64 --self-contained false -o .\artifacts\publish
+
+      - name: Create release zip
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            $tag = "manual-build"
+          }
+          $zipName = "Soundboard-win-x64-$tag.zip"
+          Compress-Archive -Path .\artifacts\publish\* -DestinationPath ".\artifacts\$zipName" -Force
+          "ASSET_PATH=artifacts/$zipName" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Upload release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: ${{ env.ASSET_PATH }}
