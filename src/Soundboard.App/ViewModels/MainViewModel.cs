@@ -92,6 +92,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
             _selectedMonitorDeviceId = value;
             OnPropertyChanged();
+            ApplyMonitorOutput();
         }
     }
 
@@ -105,6 +106,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
             _hearSoundsLocally = value;
             OnPropertyChanged();
+            ApplyMonitorOutput();
         }
     }
 
@@ -210,7 +212,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         UpdateOutputGuidance();
 
         var savedMonitor = _settingsRepo.Get("audio.monitorDeviceId");
-        SelectedMonitorDeviceId = ResolveDeviceId(RenderDevices, savedMonitor, _devices.TryGetDefaultRenderDeviceId());
+        SelectedMonitorDeviceId = ResolveDeviceId(
+            RenderDevices,
+            _selectedMonitorDeviceId ?? savedMonitor,
+            _devices.TryGetDefaultRenderDeviceId());
     }
 
     private void LoadSettings()
@@ -304,6 +309,30 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         _settingsRepo.Set("audio.hearLocally", HearSoundsLocally ? "true" : "false");
     }
 
+    private void ApplyMonitorOutput()
+    {
+        if (!string.IsNullOrWhiteSpace(SelectedMonitorDeviceId))
+            _settingsRepo.Set("audio.monitorDeviceId", SelectedMonitorDeviceId);
+        _settingsRepo.Set("audio.hearLocally", HearSoundsLocally ? "true" : "false");
+
+        if (_engine.State != AudioEngineState.Running || _engine.MixWaveFormat is null)
+            return;
+
+        _monitorEngine.Stop();
+
+        if (HearSoundsLocally && !string.IsNullOrWhiteSpace(SelectedMonitorDeviceId))
+        {
+            try
+            {
+                _monitorEngine.Start(SelectedMonitorDeviceId, _engine.MixWaveFormat);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Failed to switch local monitor device");
+            }
+        }
+    }
+
     private void StartEngine()
     {
         if (string.IsNullOrWhiteSpace(SelectedCaptureDeviceId) || string.IsNullOrWhiteSpace(SelectedRenderDeviceId))
@@ -335,13 +364,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             PersistSettings();
             _engine.Start(new AudioEngineConfig(SelectedCaptureDeviceId, SelectedRenderDeviceId));
-
-            if (HearSoundsLocally
-                && !string.IsNullOrWhiteSpace(SelectedMonitorDeviceId)
-                && _engine.MixWaveFormat is not null)
-            {
-                _monitorEngine.Start(SelectedMonitorDeviceId, _engine.MixWaveFormat);
-            }
+            ApplyMonitorOutput();
 
             StatusText = "Running";
         }
